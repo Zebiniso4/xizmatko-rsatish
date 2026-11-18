@@ -120,6 +120,26 @@ Talablar: har bir jadvalda yaratilgan va o'zgartirilgan vaqt saqlanadi; o'chiris
 - Buyurtma sahifasida holatlar rang bilan ajratib ko'rsatiladi.
 - Formalar xato kiritilganda aniq izoh beradi.
 
+### Interfeys maketlari
+
+Quyidagi maketlar dasturning taxminiy ko'rinishini ko'rsatadi. Ulardagi ma'lumotlar xayoliy, namuna sifatida berilgan.
+
+**Asosiy oyna** — bugungi ko'rsatkichlar, buyurtmalar va kam qolgan qismlar:
+
+![Asosiy oyna](docs/images/01-asosiy-oyna.svg)
+
+**Buyurtmalar ro'yxati** — qidiruv, filtr va holatlar:
+
+![Buyurtmalar ro'yxati](docs/images/02-buyurtmalar.svg)
+
+**Buyurtma kartasi** — ishlar, ehtiyot qismlar, hisob va to'lov:
+
+![Buyurtma kartasi](docs/images/03-buyurtma-kartasi.svg)
+
+**Ombor** — qoldiq va minimal darajadan kam qismlar:
+
+![Ombor](docs/images/04-ombor.svg)
+
 ## 7. Ish bosqichlari va muddatlar
 
 | Bosqich | Mazmuni | Muddat |
