@@ -3,7 +3,12 @@
 Avtomobillar, mijozlar, ijara, ta'mirlash, ehtiyot qismlar va to'lovlarni
 boshqaruvchi konsol dasturi (Python 3 + MongoDB).
 
-## Ishga tushirish
+## Maqsad
+
+Avtomobil ijarasi hisobini bitta tizimda yuritish. Batafsil:
+[loyiha xartiyasi](../docs/project-charter.md).
+
+## O'rnatish va ishga tushirish
 
 MongoDB ishlab turishi kerak.
 
@@ -16,6 +21,15 @@ python main.py
 ```
 
 Boshqa server uchun `MONGO_URI` muhit o'zgaruvchisini bering.
+
+## Foydalanish
+
+Avval menyudan avtomobil va mijoz qo'shing, keyin ijara oching. Mashina
+qaytganda ijarani yoping, to'lovni kiriting va hisobotlarni ko'ring.
+
+## Jamoa
+
+Matrasulova Zebiniso — loyiha rahbari va dasturchi.
 
 ## Tuzilma
 
