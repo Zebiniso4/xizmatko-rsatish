@@ -1,11 +1,14 @@
 from errors import AppError
 from models.common import get, now, positive, required
+from models.validators import valid_mileage
 
 
 def add(db, brand, model, year, plate_number, daily_price, mileage=0):
     plate = required(plate_number, "Davlat raqami").upper().replace(" ", "")
     if db.cars.find_one({"plate_number": plate}):
         raise AppError("Bu davlat raqamli avtomobil bor")
+    if not valid_mileage(mileage):
+        raise AppError("Probeg noto'g'ri")
     return db.cars.insert_one({
         "brand": required(brand, "Marka"),
         "model": required(model, "Model"),
