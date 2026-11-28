@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Avtomobil Ijarasi</title>
+<style>
+/* Layout: sarlavha, bo'limlar qatori, forma + ro'yxat */
+:root{--bg:#eef1f4;--card:#fff;--fg:#17222e;--mute:#5b6978;--line:#cfd7df;--acc:#0b5cad;--on:#fff;--ok:#1c7a46;--warn:#a35a00;--bad:#b3261e}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10161d;--card:#19222c;--fg:#e8edf2;--mute:#9babba;--line:#33414f;--acc:#6cb2ff;--on:#08131f;--ok:#64d190;--warn:#f0b35a;--bad:#ff8a80;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#10161d;--card:#19222c;--fg:#e8edf2;--mute:#9babba;--line:#33414f;--acc:#6cb2ff;--on:#08131f;--ok:#64d190;--warn:#f0b35a;--bad:#ff8a80;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,sans-serif;padding-block:20px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:900px;margin:0 auto;display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+h1{margin:0;font-size:24px}h2{font-size:16px;margin:0 0 10px}
+nav{display:flex;flex-wrap:wrap;gap:6px}
+button{font:inherit;border:1px solid var(--acc);background:var(--acc);color:var(--on);border-radius:6px;padding:8px 12px;cursor:pointer}
+button:disabled{opacity:.5}
+nav button{background:var(--card);color:var(--fg);border-color:var(--line)}
+nav button[aria-current="true"]{background:var(--acc);color:var(--on)}
+section{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px;min-width:0}
+form{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;align-items:end}
+label{display:grid;gap:3px;font-size:13px;color:var(--mute)}
+input,select{font:inherit;width:100%;min-width:0;padding:7px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}th{font-size:12px;color:var(--mute)}
+#msg{min-height:1.4em;margin:0}.bad{color:var(--bad)}.ok{color:var(--ok)}.warn{color:var(--warn)}.mute{color:var(--mute)}
+</style>
+<style>body{margin:0}</style>
+</head>
+<body>
+<main>
+<h1>Avtomobil ijarasi</h1>
+<nav id="nav"></nav>
+<p id="msg" role="status" class="mute">Ma'lumotlar yuklanmoqda…</p>
+<div id="view" style="display:grid;gap:14px;grid-template-columns:minmax(0,1fr)"></div>
+</main>
+<script>
+const KEYS=["cars","customers","rentals","repairs","parts","payments"];
+const fresh=()=>({seq:0,cars:[],customers:[],rentals:[],repairs:[],parts:[],payments:[]});
+let S=fresh(),tab="home",ref=null,ready=false,busy=false;
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>"&#"+c.charCodeAt(0)+";");
+const today=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const money=n=>Number(n).toLocaleString("ru-RU")+" so'm";
+const fail=m=>{throw new Error(m)};
+const get=(s,k,id)=>s[k].find(x=>x.id===Number(id))||fail("Yozuv tanlanmagan yoki topilmadi");
+const add=(s,k,o)=>{o.id=++s.seq;s[k].push(o);return o};
+const text=(v,n)=>String(v||"").trim()||fail(n+" kiritilmagan");
+const num=(v,n,min=1)=>{const x=Number(v);if(v===""||!Number.isInteger(x)||x<min)fail(n+" noto'g'ri");return x};
+const date=(v,n)=>/^\d{4}-\d\d-\d\d$/.test(v)?v:fail(n+" kiritilmagan");
+const days=(a,b)=>Math.round((Date.parse(b)-Date.parse(a))/864e5);
+const paid=(s,k,id)=>s.payments.filter(p=>p[k]===id).reduce((a,p)=>a+p.amount,0);
+const take=(c,st)=>{if(c.status!=="free")fail("Avtomobil bo'sh emas");c.status=st};
+const openRepair=(s,car,work,rental)=>{take(car,"repair");add(s,"repairs",{car:car.id,rental:rental||null,work:text(work,"Ish turi"),parts:[],cost:0,status:"open",date:today()})};
+
+const ACT={
+ car(s,f){const plate=text(f.plate,"Davlat raqami").toUpperCase().replace(/\s/g,"");
+  if(s.cars.some(c=>c.plate===plate))fail("Bu davlat raqamli avtomobil bor");
+  add(s,"cars",{name:text(f.name,"Marka va model"),year:num(f.year,"Yil",1950),plate,price:num(f.price,"Kunlik narx"),mileage:num(f.mileage,"Probeg",0),status:"free"})},
+ price(s,f){get(s,"cars",f.car).price=num(f.price,"Kunlik narx")},
+ customer(s,f){const passport=text(f.passport,"Pasport").toUpperCase().replace(/\s/g,"");
+  if(s.customers.some(c=>c.passport===passport))fail("Bu pasportli mijoz bor");
+  add(s,"customers",{name:text(f.name,"F.I.Sh."),phone:text(f.phone,"Telefon"),passport,license:text(f.license,"Guvohnoma"),address:f.address.trim()})},
+ rent(s,f){const car=get(s,"cars",f.car),name=text(f.name,"Ism familiya").replace(/\s+/g," "),phone=text(f.phone,"Telefon"),a=date(f.start,"Boshlanish"),b=date(f.end,"Tugash");
+  if(days(a,b)<1)fail("Tugash sanasi boshlanishdan keyin bo'lishi kerak");take(car,"rented");
+  const who=s.customers.find(c=>c.name.toLowerCase()===name.toLowerCase()&&c.phone===phone)||add(s,"customers",{name,phone,passport:"",license:"",address:""});
+  add(s,"rentals",{car:car.id,customer:who.id,start:a,end:b,price:car.price,total:days(a,b)*car.price,status:"active"})},
+ extend(s,f){const r=get(s,"rentals",f.rental),b=date(f.end,"Yangi sana");
+  if(r.status!=="active"||days(r.end,b)<1)fail("Yangi sana eskisidan keyin bo'lishi kerak");r.end=b;r.total=days(r.start,b)*r.price},
+ giveBack(s,f){const r=get(s,"rentals",f.rental),car=get(s,"cars",r.car),d=date(f.date,"Qaytarish sanasi"),m=num(f.mileage,"Probeg",0);
+  if(r.status!=="active")fail("Ijara yopilgan");if(days(r.start,d)<0)fail("Qaytarish sanasi boshlanishdan oldin");
+  if(m<car.mileage)fail("Probeg avvalgidan kam bo'lmaydi");
+  r.total=days(r.start,d>r.end?d:r.end)*r.price;r.status="closed";r.returned=d;car.mileage=m;car.status="free";
+  if(f.damage.trim())openRepair(s,car,f.damage,r.id)},
+ repair(s,f){openRepair(s,get(s,"cars",f.car),f.work)},
+ use(s,f){const o=get(s,"repairs",f.repair),p=get(s,"parts",f.part),q=num(f.qty,"Miqdor");
+  if(o.status!=="open")fail("Buyurtma yopilgan");if(p.stock<q)fail("Omborda yetarli qism yo'q");
+  p.stock-=q;o.parts.push({part:p.id,qty:q,price:p.price,mileage:get(s,"cars",o.car).mileage,date:today()})},
+ finish(s,f){const o=get(s,"repairs",f.repair);if(o.status!=="open")fail("Buyurtma yopilgan");
+  o.cost=num(f.fee,"Xizmat haqi",0)+o.parts.reduce((a,p)=>a+p.qty*p.price,0);o.status="done";get(s,"cars",o.car).status="free"},
+ part(s,f){add(s,"parts",{name:text(f.name,"Nomi"),maker:text(f.maker,"Ishlab chiqaruvchi"),price:num(f.price,"Narx"),min:num(f.min,"Eng kam qoldiq",0),km:num(f.km,"Km",0),months:num(f.months,"Oy",0),stock:0,ins:[]})},
+ receive(s,f){const p=get(s,"parts",f.part),q=num(f.qty,"Miqdor");p.stock+=q;p.ins.push({qty:q,price:p.price,date:today()})},
+ pay(s,f){const [type,id]=String(f.target).split(":");const k=type==="r"?"rental":"repair",o=get(s,k+"s",id),a=num(f.amount,"Summa");
+  const due=(k==="rental"?o.total:o.cost)-paid(s,k,o.id);if(a>due)fail("To'lov qarzdan katta: qarz "+money(due));
+  add(s,"payments",{[k]:o.id,amount:a,method:f.method,date:today()})}
+};
+
+const carName=id=>{const c=S.cars.find(x=>x.id===id);return c?c.name+" "+c.plate:"—"};
+const custName=id=>S.customers.find(x=>x.id===id)?.name||"—";
+const inp=(n,l,type="text",val="",req=true)=>`<label>${l}<input id="f-${n}-ID" name="${n}" type="${type}" value="${esc(val)}" ${req?"required":""} ${type==="number"?'min="0" step="1"':""}></label>`;
+const sel=(n,l,opts)=>`<label>${l}<select id="f-${n}-ID" name="${n}" required ${opts.length?"":`data-empty="${n}"`}><option value="">Tanlang</option>${opts.map(([v,t])=>`<option value="${esc(v)}">${esc(t)}</option>`).join("")}</select></label>`;
+const NEED={car:"Mos avtomobil yo'q. “Avtomobillar” bo'limida qo'shing yoki band mashinani bo'shating.",rental:"Faol ijara yo'q. Avval yuqoridagi “Ijaraga berish” orqali ijara oching.",repair:"Ochiq ta'mir buyurtmasi yo'q. Avval ta'mir oching.",part:"Ehtiyot qism yo'q. Avval “Ombor” bo'limida qo'shing.",target:"To'lanadigan qarz yo'q."};
+const form=(act,title,fields,btn)=>{const none=fields.join("").match(/data-empty="(\w+)"/);if(none)return `<section><h2>${title}</h2><p class="mute">${NEED[none[1]]}</p></section>`;return `<section><h2>${title}</h2><form data-act="${act}">${fields.join("").replaceAll("-ID","-"+act)}<button>${btn}</button></form></section>`};
+const table=(title,head,rows,empty)=>`<section><h2>${title}</h2>${rows.length?`<div class="scroll"><table><tr>${head.map(h=>`<th>${h}</th>`).join("")}</tr>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</table></div>`:`<p class="mute">${empty}</p>`}</section>`;
+const cars=st=>S.cars.filter(c=>!st||c.status===st).map(c=>[c.id,c.name+" "+c.plate]);
+const partOpts=()=>S.parts.map(p=>[p.id,`${p.name} (${p.maker}), qoldiq ${p.stock}`]);
+const STATUS={free:"bo'sh",rented:"ijarada",repair:"ta'mirda",active:"faol",closed:"yopilgan",open:"ochiq",done:"tugagan"};
+
+function debts(){const m={};for(const r of S.rentals){let d=r.total-paid(S,"rental",r.id);for(const o of S.repairs)if(o.rental===r.id&&o.status==="done")d+=o.cost-paid(S,"repair",o.id);if(d>0)m[r.customer]=(m[r.customer]||0)+d}return Object.entries(m).map(([id,d])=>[custName(Number(id)),money(d)])}
+function due(){const last={};for(const o of S.repairs)for(const u of o.parts){const k=o.car+":"+u.part;if(!last[k]||u.date+String(u.mileage).padStart(9,"0")>=last[k].date+String(last[k].mileage).padStart(9,"0"))last[k]={...u,car:o.car}}
+ return Object.values(last).filter(u=>{const p=get(S,"parts",u.part),c=get(S,"cars",u.car);return(p.km&&c.mileage>=u.mileage+p.km-500)||(p.months&&days(u.date,today())>=30*p.months-14)}).map(u=>[carName(u.car),get(S,"parts",u.part).name])}
+
+const VIEWS={
+ home:["Hisobotlar",()=>{const m=today().slice(0,7),inc=S.payments.filter(p=>p.date.startsWith(m)).reduce((a,p)=>a+p.amount,0),
+  exp=S.parts.flatMap(p=>p.ins).filter(i=>i.date.startsWith(m)).reduce((a,i)=>a+i.qty*i.price,0);
+  const top=S.cars.map(c=>[carName(c.id),S.rentals.filter(r=>r.car===c.id).length]).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  return (S.cars.length?"":`<section><h2>Boshlash</h2><p>Avval “Avtomobillar” bo'limida mashina, “Mijozlar” bo'limida mijoz qo'shing. Keyin “Ijara” bo'limida ijara oching.</p></section>`)
+  +table("Shu oy",["Tushum","Ehtiyot qism xaridi","Bo'sh mashinalar"],[[money(inc),money(exp),cars("free").length+" / "+S.cars.length]],"")
+  +table("Qarzdorlar",["Mijoz","Qarz"],debts(),"Qarzdor yo'q.")
+  +table("Eng ko'p ijaraga olingan",["Avtomobil","Soni"],top,"Hali ijara yo'q.")
+  +table("Kam qolgan qismlar",["Qism","Qoldiq"],S.parts.filter(p=>p.stock<p.min).map(p=>[p.name,p.stock]),"Kam qolgan qism yo'q.")
+  +table("Texnik xizmat muddati yaqin",["Avtomobil","Qism"],due(),"Muddati yaqin mashina yo'q.")}],
+ cars:["Avtomobillar",()=>form("car","Avtomobil qo'shish",[inp("name","Marka va model"),inp("year","Yil","number"),inp("plate","Davlat raqami"),inp("price","Kunlik narx, so'm","number"),inp("mileage","Probeg, km","number",0)],"Qo'shish")
+  +table("Ro'yxat",["Avtomobil","Raqam","Yil","Kunlik narx","Probeg","Holat"],S.cars.map(c=>[c.name,c.plate,c.year,money(c.price),c.mileage,STATUS[c.status]]),"Avtomobil qo'shilmagan.")
+  +form("price","Narxni o'zgartirish",[sel("car","Avtomobil",cars()),inp("price","Yangi kunlik narx","number")],"Saqlash")],
+ customers:["Mijozlar",()=>form("customer","Mijoz qo'shish",[inp("name","F.I.Sh."),inp("phone","Telefon","tel"),inp("passport","Pasport raqami"),inp("license","Haydovchilik guvohnomasi"),inp("address","Manzil","text","",false)],"Qo'shish")
+  +table("Ro'yxat",["F.I.Sh.","Telefon","Pasport","Guvohnoma","Manzil","Ijaralar"],S.customers.map(c=>[c.name,c.phone,c.passport,c.license,c.address,S.rentals.filter(r=>r.customer===c.id).length]),"Mijoz qo'shilmagan.")],
+ rentals:["Ijara",()=>{const act=S.rentals.filter(r=>r.status==="active").map(r=>[r.id,carName(r.car)+", "+custName(r.customer)]);
+  return form("rent","Ijaraga berish",[sel("car","Bo'sh avtomobil",cars("free")),inp("name","Ism familiyangiz"),inp("phone","Telefon raqamingiz","tel"),inp("start","Boshlanish","date",today()),inp("end","Tugash","date")],"Ijara ochish")
+  +table("Ijaralar",["Avtomobil","Mijoz","Boshlanish","Tugash","Summa","Holat"],S.rentals.slice().reverse().map(r=>[carName(r.car),custName(r.customer),r.start,r.end,money(r.total),STATUS[r.status]]),"Ijara yo'q.")
+  +form("giveBack","Qaytarib olish",[sel("rental","Faol ijara",act),inp("date","Qaytarish sanasi","date",today()),inp("mileage","Probeg, km","number"),inp("damage","Shikast (bo'lmasa bo'sh)","text","",false)],"Qabul qilish")
+  +form("extend","Muddatni uzaytirish",[sel("rental","Faol ijara",act),inp("end","Yangi tugash sanasi","date")],"Uzaytirish")}],
+ repairs:["Ta'mir",()=>{const o=S.repairs.filter(r=>r.status==="open").map(r=>[r.id,carName(r.car)+", "+r.work]);
+  return form("repair","Ta'mir ochish",[sel("car","Bo'sh avtomobil",cars("free")),inp("work","Ish turi")],"Ochish")
+  +table("Buyurtmalar",["Sana","Avtomobil","Ish","Narx","Holat"],S.repairs.slice().reverse().map(r=>[r.date,carName(r.car),r.work,money(r.cost),STATUS[r.status]]),"Buyurtma yo'q.")
+  +form("use","Qism ishlatish",[sel("repair","Buyurtma",o),sel("part","Qism",partOpts()),inp("qty","Miqdor","number",1)],"Chiqim qilish")
+  +form("finish","Buyurtmani yopish",[sel("repair","Buyurtma",o),inp("fee","Xizmat haqi, so'm","number",0)],"Yopish")}],
+ parts:["Ombor",()=>form("part","Yangi ehtiyot qism",[inp("name","Nomi"),inp("maker","Ishlab chiqaruvchi"),inp("price","Narx, so'm","number"),inp("min","Eng kam qoldiq","number",1),inp("km","Almashtirish, km (0 = yo'q)","number",0),inp("months","Almashtirish, oy (0 = yo'q)","number",0)],"Qo'shish")
+  +form("receive","Kirim",[sel("part","Qism",partOpts()),inp("qty","Miqdor","number",1)],"Qabul qilish")
+  +table("Qoldiq",["Nomi","Ishlab chiqaruvchi","Narx","Qoldiq"],S.parts.map(p=>[p.name,p.maker,money(p.price),p.stock]),"Ehtiyot qism qo'shilmagan.")],
+ payments:["To'lovlar",()=>{const t=[...S.rentals.map(r=>["r:"+r.id,"Ijara: "+custName(r.customer)+", "+carName(r.car),r.total-paid(S,"rental",r.id)]),
+   ...S.repairs.filter(o=>o.status==="done").map(o=>["m:"+o.id,"Ta'mir: "+carName(o.car)+", "+o.work,o.cost-paid(S,"repair",o.id)])].filter(x=>x[2]>0).map(x=>[x[0],x[1]+" (qarz "+money(x[2])+")"]);
+  return form("pay","To'lov qabul qilish",[sel("target","Nima uchun",t),inp("amount","Summa, so'm","number"),sel("method","To'lov turi",[["naqd","Naqd"],["karta","Karta"]])],"Qabul qilish")
+  +table("Tarix",["Sana","Tur","Summa","Usul"],S.payments.slice().reverse().map(p=>[p.date,p.rental?"Ijara":"Ta'mir",money(p.amount),p.method]),"To'lov yo'q.")}]
+};
+function say(m,c){$("msg").textContent=m;$("msg").className=c||"mute"}
+function render(){
+ $("nav").innerHTML=Object.entries(VIEWS).map(([k,v])=>`<button type="button" data-tab="${k}" aria-current="${k===tab}">${v[0]}</button>`).join("");
+ $("view").innerHTML=VIEWS[tab][1]();
+ for(const b of $("view").querySelectorAll("form button"))b.disabled=!ready||busy;
+}
+const normalize=d=>{const s=Object.assign(fresh(),d?JSON.parse(JSON.stringify(d)):{});for(const k of KEYS)s[k]=s[k]||[];return s};
+$("nav").addEventListener("click",e=>{const k=e.target.dataset.tab;if(k){tab=k;render()}});
+$("view").addEventListener("submit",async e=>{
+ e.preventDefault();if(!ready||busy)return;
+ const el=e.target,next=normalize(S);
+ try{ACT[el.dataset.act](next,Object.fromEntries(new FormData(el)))}catch(err){say(err.message,"bad");return}
+ busy=true;for(const b of $("view").querySelectorAll("form button"))b.disabled=true;say("Saqlanmoqda…");
+ try{if(ref)await ref.set(next);S=next;busy=false;render();say(ref?"Saqlandi":"Sinov rejimi: saqlanmadi, sahifa yopilsa yo'qoladi",ref?"ok":"warn")}
+ catch(err){busy=false;render();say("Saqlanmadi: brauzer xotirasi yopiq yoki to'lgan.","bad")}
+});
+render();
+const KEY="avto-ijara";
+const sample=()=>{const s=fresh();[["Chevrolet Cobalt",2023,"01A001AA",300000],["Chevrolet Gentra",2022,"01A002AA",350000],["Chevrolet Malibu",2022,"01A003AA",600000]].forEach(([n,year,plate,price])=>add(s,"cars",{name:n+" (namuna)",year,plate,price,mileage:0,status:"free"}));return s};
+try{const raw=localStorage.getItem(KEY);S=raw?normalize(JSON.parse(raw)):sample()}catch{S=sample()}
+ref={set:async d=>localStorage.setItem(KEY,JSON.stringify(d))};
+ready=true;render();say("Ma'lumotlar faqat shu brauzerda saqlanadi.");
+addEventListener("storage",e=>{if(e.key===KEY&&e.newValue){S=normalize(JSON.parse(e.newValue));render()}});
+</script>
+</body>
+</html>
