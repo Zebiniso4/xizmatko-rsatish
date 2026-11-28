@@ -1,0 +1,13 @@
+# Vaqtinchalik fayllar
+__pycache__/
+*.pyc
+*.log
+*.tmp
+.venv/
+.vscode/
+.idea/
+
+# Maxfiy kalitlar
+.env
+*.key
+*.pem
