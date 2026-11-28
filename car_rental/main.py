@@ -1,11 +1,12 @@
 """Konsol menyusi: python main.py"""
 from datetime import date
+from getpass import getpass
 
 import reports
 from db import get_db
 from errors import AppError
 from models import cars, customers
-from services import payment, rental, repair, warehouse
+from services import auth, payment, rental, repair, warehouse
 
 
 def ask(text):
@@ -180,7 +181,19 @@ MENU = [
 ]
 
 
+def login():
+    expected = auth.required_password()
+    if not expected:
+        return
+    for _ in range(3):
+        if auth.check(getpass("Parol: "), expected):
+            return
+        print("Parol noto'g'ri")
+    raise SystemExit("Kirish rad etildi")
+
+
 def main():
+    login()
     try:
         db = get_db()
     except Exception as error:
