@@ -24,6 +24,7 @@ Boshqa server uchun `MONGO_URI` muhit o'zgaruvchisini bering.
 
 ## Foydalanish
 
+Dastur `python main.py` buyrug'i bilan ochiladi.
 Parol bilan himoyalash uchun `ADMIN_PASSWORD` muhit o'zgaruvchisini bering.
 
 Avval menyudan avtomobil va mijoz qo'shing, keyin ijara oching. Mashina
