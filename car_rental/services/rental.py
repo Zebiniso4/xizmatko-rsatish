@@ -4,6 +4,7 @@ from datetime import date
 from errors import AppError
 from models import cars
 from models.common import get, now
+from models.validators import valid_mileage
 from services import repair
 
 
@@ -58,8 +59,8 @@ def close(db, rental_id, return_date, mileage, damage=""):
     start = date.fromisoformat(doc["start_date"])
     if return_date < start:
         raise AppError("Qaytarish sanasi boshlanishdan oldin")
-    if mileage < car["mileage"]:
-        raise AppError("Probeg avvalgidan kam bo'lishi mumkin emas")
+    if not valid_mileage(mileage) or mileage < car["mileage"]:
+        raise AppError("Probeg noto'g'ri yoki avvalgidan kam")
     end = max(return_date, date.fromisoformat(doc["end_date"]))
     total = (end - start).days * doc["daily_price"]
     db.rentals.update_one({"_id": rental_id}, {"$set": {
